@@ -4,26 +4,38 @@
 
 import 'dart:async';
 
-import 'package:flutter_clock_helper/model.dart';
+import 'package:digital_clock/number.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_clock_helper/model.dart';
 import 'package:intl/intl.dart';
 
 enum _Element {
   background,
+  number,
   text,
   shadow,
 }
 
 final _lightTheme = {
-  _Element.background: Color(0xFF81B3FE),
-  _Element.text: Colors.white,
-  _Element.shadow: Colors.black,
+  _Element.background: Colors.grey,
+  _Element.number: Colors.black54,
+  _Element.text: Colors.black54,
 };
 
 final _darkTheme = {
   _Element.background: Colors.black,
+  _Element.number: Colors.white,
   _Element.text: Colors.white,
-  _Element.shadow: Color(0xFF174EA6),
+};
+
+final _weatherIcon = {
+  WeatherCondition.cloudy: 0xe624,
+  WeatherCondition.foggy: 0xe67d,
+  WeatherCondition.rainy: 0xe674,
+  WeatherCondition.snowy: 0xe67e,
+  WeatherCondition.sunny: 0xe67c,
+  WeatherCondition.thunderstorm: 0xe67b,
+  WeatherCondition.windy: 0xe671
 };
 
 /// A basic digital clock.
@@ -98,37 +110,165 @@ class _DigitalClockState extends State<DigitalClock> {
     final colors = Theme.of(context).brightness == Brightness.light
         ? _lightTheme
         : _darkTheme;
+    return Container(
+        color: colors[_Element.background],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Stack(
+            children: <Widget>[
+              /// time
+              Positioned.fill(
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: 0.75,
+                  heightFactor: 0.6,
+                  child: _getTimeWidget(colors),
+                ),
+              ),
+
+              /// AM/PM
+              Positioned.fill(
+                  child: FractionallySizedBox(
+                      alignment: Alignment.bottomLeft,
+                      heightFactor: 0.2,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: _getAMPMWidget(colors),
+                      ))),
+
+              /// location
+              Positioned.fill(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.bottomRight,
+                    heightFactor: 0.2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _getLocationWidget(colors),
+                    ),
+                  )),
+
+              /// temperature
+              Positioned.fill(
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerRight,
+                    heightFactor: 0.6,
+                    widthFactor: 0.25,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        _getWeatherIcon(colors),
+                        _getTemperatureWidget(colors),
+                      ],
+                    ),
+                  )),
+            ],
+          ),
+        ));
+  }
+
+  /// time display widget
+  Widget _getTimeWidget(Map colors) {
     final hour =
-        DateFormat(widget.model.is24HourFormat ? 'HH' : 'hh').format(_dateTime);
+    DateFormat(widget.model.is24HourFormat ? 'HH' : 'hh').format(_dateTime);
     final minute = DateFormat('mm').format(_dateTime);
-    final fontSize = MediaQuery.of(context).size.width / 3.5;
-    final offset = -fontSize / 7;
-    final defaultStyle = TextStyle(
-      color: colors[_Element.text],
-      fontFamily: 'PressStart2P',
-      fontSize: fontSize,
-      shadows: [
-        Shadow(
-          blurRadius: 0,
-          color: colors[_Element.shadow],
-          offset: Offset(10, 0),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Expanded(
+          flex: 1,
+          child: NumberWidget(
+            number: int.parse(hour.substring(0, 1)),
+            size: Size.infinite,
+            color: colors[_Element.number],
+          ),
+        ),
+        SizedBox(width: 5),
+        Expanded(
+          flex: 1,
+          child: NumberWidget(
+            number: int.parse(hour.substring(1, 2)),
+            size: Size.infinite,
+            color: colors[_Element.number],
+          ),
+        ),
+        SizedBox(width: 7),
+        DotWidget(
+          size: Size(30, 200),
+          color: colors[_Element.number],
+        ),
+        SizedBox(width: 7),
+        Expanded(
+          flex: 1,
+          child: NumberWidget(
+            number: int.parse(minute.substring(0, 1)),
+            size: Size.infinite,
+            color: colors[_Element.number],
+          ),
+        ),
+        SizedBox(width: 5),
+        Expanded(
+          flex: 1,
+          child: NumberWidget(
+            number: int.parse(minute.substring(1, 2)),
+            size: Size.infinite,
+            color: colors[_Element.number],
+          ),
         ),
       ],
     );
+  }
 
-    return Container(
-      color: colors[_Element.background],
-      child: Center(
-        child: DefaultTextStyle(
-          style: defaultStyle,
-          child: Stack(
-            children: <Widget>[
-              Positioned(left: offset, top: 0, child: Text(hour)),
-              Positioned(right: offset, bottom: offset, child: Text(minute)),
-            ],
-          ),
-        ),
+  /// am / pm
+  Widget _getAMPMWidget(Map colors) {
+    var text;
+    if (_dateTime.hour >= 11) {
+      text = 'PM';
+    } else {
+      text = 'AM';
+    }
+    return Text(
+      text,
+      style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: colors[_Element.number]),
+    );
+  }
+
+  /// temperature widget
+  Widget _getTemperatureWidget(Map colors) {
+    return Text(
+      widget.model.temperatureString,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: colors[_Element.text],
       ),
+    );
+  }
+
+  /// location widget
+  Widget _getLocationWidget(Map colors) {
+    return Text(
+      widget.model.location,
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: colors[_Element.text],
+      ),
+    );
+  }
+
+  /// weather icon widget
+  Widget _getWeatherIcon(Map colors) {
+    return Icon(
+      IconData(_weatherIcon[widget.model.weatherCondition],
+          fontFamily: 'weather_icon', matchTextDirection: true),
+      color: colors[_Element.text],
+      size: 60,
     );
   }
 }
